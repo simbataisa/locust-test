@@ -5,29 +5,29 @@ import logging
 from locust import HttpUser, task, between
 
 # membership_no = "AHMY625111"
-membership_no = "AHMY552226"
+MEMBERSHIP_NO = "AHMY552226"
 
-vitality_hostname = "https://qa.vitality.aia.com/vitality"
-naluri_hostname = "https://staging-ah.naluri.net"
+VITALITY_HOSTNAME = "https://qa.vitality.aia.com/vitality"
+NALURI_HOSTNAME = "https://staging-ah.naluri.net"
 
-token_base_url = "/security/v1/tokens/generate?entity-id=9&app-id=9d62c962-db2e-4fcf-b856-5da15d21fb72&membership-no="
+TOKEN_BASE_URL = "/security/v1/tokens/generate?entity-id=9&app-id=9d62c962-db2e-4fcf-b856-5da15d21fb72&membership-no="
 
-token_request_headers = {
+TOKEN_REQUEST_HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
     "Authorization": "Basic YzY2YWIyNDYtMzA2MS00ZDA4LWI2ODUtMWEwNTg2OGI0ZmE4OmI4NDBiZjI2LTkwMjUtNDdlMC04YWVjLThmYTkwOGI4MTEzZQ=="
 }
 
-validate_base_url = "/core/v3/crm/member/validate/benefit?member-identifier-reference-type=MEMBERSHIPNO&partner-id=NALURISG&member-identifier-reference="
-member_validate_request_headers = {
+VALIDATE_BASE_URL = "/core/v3/crm/member/validate/benefit?member-identifier-reference-type=MEMBERSHIPNO&partner-id=NALURISG&member-identifier-reference="
+MEMBER_VALIDATE_REQUEST_HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
     "X-Vitality-Legal-Entity-Id": "9",
     "X-AIA-Request-Id": "CDM"
 }
 
-register_image_base_url = "/core/v2/challenges/food/register-image?number-of-images=1&membership-no="
-access_token_headers = {
+REGISTER_IMAGE_BASE_URL = "/core/v2/challenges/food/register-image?number-of-images=1&membership-no="
+ACCESS_TOKEN_HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
     "X-Vitality-Legal-Entity-Id": "9",
@@ -46,18 +46,18 @@ def _get_image_part(file_path, file_content_type='image/jpeg'):
 
 class CDMUsers(HttpUser):
     # Member validation API
-    validate_url = f"{validate_base_url}{membership_no}"
+    validate_url = f"{VALIDATE_BASE_URL}{MEMBERSHIP_NO}"
     # Register image API
-    register_image_url = f"{register_image_base_url}{membership_no}"
+    register_image_url = f"{REGISTER_IMAGE_BASE_URL}{MEMBERSHIP_NO}"
     # Classification API
-    classification_url = f"{classification_base_url}{membership_no}&food-journal-id="
+    classification_url = f"{classification_base_url}{MEMBERSHIP_NO}&food-journal-id="
 
     def on_start(self):
         wait_time = between(1, 5)
-        token_url = token_base_url + membership_no
+        token_url = TOKEN_BASE_URL + MEMBERSHIP_NO
         logging.info(token_url)
         global token
-        with self.client.post(token_url, headers=token_request_headers, catch_response=True) as response:
+        with self.client.post(token_url, headers=TOKEN_REQUEST_HEADERS, catch_response=True) as response:
             try:
                 response_json = response.json()
                 jwt = response_json["jwt"]
@@ -72,16 +72,16 @@ class CDMUsers(HttpUser):
     def validate_member_benefit(self):
 
         # logging.info(validate_url)
-        with self.client.get(self.validate_url, headers=member_validate_request_headers) as response:
+        with self.client.get(self.validate_url, headers=MEMBER_VALIDATE_REQUEST_HEADERS) as response:
             logging.info(response.json())
 
     @task
     def food_journal(self):
         # Step 1: Get pre-signed URL from the first API
         logging.info(self.register_image_url)
-        access_token_headers["Authorization"] = "Bearer " + token
+        ACCESS_TOKEN_HEADERS["Authorization"] = "Bearer " + token
         pre_signed_url = None
-        with self.client.get(self.register_image_url, headers=access_token_headers,
+        with self.client.get(self.register_image_url, headers=ACCESS_TOKEN_HEADERS,
                              catch_response=True) as upload_response:
             try:
                 if upload_response.status_code != 200:
@@ -102,7 +102,7 @@ class CDMUsers(HttpUser):
                                  catch_response=True) as upload_response:
                 logging.info(upload_response.json())
                 if upload_response.status_code != 200:
-                    upload_response.failure(f"encountered error when uploading image {upload_response.http_status}")
+                    upload_response.failure(f"encountered error when uploading image {upload_response.status_code}")
                 else:
                     r_data = upload_response.json()
 
@@ -112,14 +112,14 @@ class CDMUsers(HttpUser):
 
         max_retries = 3
         for attempt in range(max_retries):
-            with self.client.get(f"{self.classification_url}{r_data['id']}", headers=access_token_headers,
+            with self.client.get(f"{self.classification_url}{r_data['id']}", headers=ACCESS_TOKEN_HEADERS,
                                  catch_response=True) as classification_response:
                 logging.info(classification_response)
 
                 try:
                     if classification_response.status_code != 200:
                         classification_response.failure(
-                            f"encountered error when retrieving classification data {classification_response.http_status}")
+                            f"encountered error when retrieving classification data {classification_response.status_code}")
                     else:
                         data = classification_response.json()
                         logging.info(data)
