@@ -107,7 +107,7 @@ class CDMUsers(HttpUser):
         # Step 2: Load and upload the image to the second API
         # food_image = _get_image_part("images/img1.png")
         r_data = None
-        with open("images/img1.png", "rb") as food_image:
+        with open("images/img2.png", "rb") as food_image:
             with self.client.put(
                 pre_signed_url,
                 data=food_image,
@@ -144,8 +144,10 @@ class CDMUsers(HttpUser):
                         )
                     else:
                         data = classification_response.json()
-                        logging.info(data)
-                        if data.get("id") is not None:
+                        logging.info(f"response came back from classification API {data}")
+                        if data["classifications"] is not None:
+                            logging.info(f" first indexed classification id = {data['classifications'][0]['id']}")
+                            logging.info(f" first indexed classification result = {data['classifications'][0]['result']}")
                             break  # Break if 'id' is non-null
                         elif attempt < max_retries - 1:
                             classification_response.failure(
