@@ -107,7 +107,7 @@ class CDMUsers(HttpUser):
         # Step 2: Load and upload the image to the second API
         # food_image = _get_image_part("images/img1.png")
         r_data = None
-        with open("images/img2.png", "rb") as food_image:
+        with open("images/image_512_1.png", "rb") as food_image:
             with self.client.put(
                 pre_signed_url,
                 data=food_image,
